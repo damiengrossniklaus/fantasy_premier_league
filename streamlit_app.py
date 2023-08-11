@@ -1,10 +1,6 @@
-import numpy as np
-import requests
 import pandas as pd
 import streamlit as st
 import plotly.express as px
-import seaborn as sns
-import matplotlib.pyplot as plt
 from utils.design_functions import assign_background
 from utils.plots import build_hist, build_team_points_bar, build_heatmap
 from utils.api_connection import query_data
