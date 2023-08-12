@@ -32,3 +32,16 @@ def assign_background():
 
     return st.markdown(page_bg_img, unsafe_allow_html=True)
 
+def round_plot_borders():
+    """
+    Round borders of plots in App.
+    """
+    style_css = """
+    <style>[data-testid="column"]{
+    box-shadow: 5px 5px 2px black;
+        }
+    </style>"""
+
+    return st.markdown(style_css, unsafe_allow_html=True)
+
+

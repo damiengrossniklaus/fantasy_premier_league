@@ -12,14 +12,12 @@ from utils.api_connection import query_data
 url = 'https://fantasy.premierleague.com/api/bootstrap-static/'
 json = query_data(url)
 
-
 # ---- MANIPULATION ----
 
 # Build data frames
 elements_df = pd.DataFrame(json['elements'])
 elements_types_df = pd.DataFrame(json['element_types'])
 teams_df = pd.DataFrame(json['teams'])
-
 
 fpl_df = elements_df[['first_name', 'second_name', 'team', 'element_type',
                       'selected_by_percent', 'now_cost', 'minutes', 'transfers_in',
@@ -31,7 +29,7 @@ fpl_df = elements_df[['first_name', 'second_name', 'team', 'element_type',
 # Create new columns for analysis
 fpl_df['position'] = fpl_df['element_type'].map(elements_types_df.set_index('id')['singular_name'])
 fpl_df['team'] = fpl_df['team'].map(teams_df.set_index('id')['name'])
-fpl_df['value'] = fpl_df['value_season'].astype('float')
+fpl_df['value'] = fpl_df['value_season'].apply(lambda x: float(x))
 fpl_df['cost'] = fpl_df['now_cost'] / 10
 fpl_df['name'] = fpl_df['first_name'] + " " + fpl_df['second_name']
 fpl_df['form'] = fpl_df['form'].astype('float')
@@ -40,7 +38,7 @@ fpl_df['threat'] = fpl_df['threat'].astype('float')
 fpl_df['influence'] = fpl_df['influence'].astype('float')
 
 
-fpl_df = fpl_df[fpl_df['minutes'] > 0].copy()
+fpl_df = fpl_df[(fpl_df['minutes'] > 0) & (fpl_df['total_points'] > 0)].copy()
 
 
 # ---- BODY ----
