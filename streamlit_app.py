@@ -2,8 +2,9 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 from utils.design_functions import assign_background
-from utils.plots import build_hist, build_team_points_bar, build_heatmap
-from utils.api_connection import query_data
+from utils.plots import build_hist, build_team_points_bar, build_heatmap, build_points_dev_plot, \
+    build_player_cost_points_chart
+from utils.api_connection import query_data, query_gw_data
 
 
 
@@ -12,6 +13,10 @@ from utils.api_connection import query_data
 url = 'https://fantasy.premierleague.com/api/bootstrap-static/'
 json = query_data(url)
 
+# Player gw data
+player_gw_df = query_gw_data()
+
+
 # ---- MANIPULATION ----
 
 # Build data frames
@@ -19,6 +24,7 @@ elements_df = pd.DataFrame(json['elements'])
 elements_types_df = pd.DataFrame(json['element_types'])
 teams_df = pd.DataFrame(json['teams'])
 
+# Total dataframe
 fpl_df = elements_df[['first_name', 'second_name', 'team', 'element_type',
                       'selected_by_percent', 'now_cost', 'minutes', 'transfers_in',
                       'value_season', 'total_points', 'form', 'creativity', 'threat', 'influence',
@@ -40,6 +46,11 @@ fpl_df['influence'] = fpl_df['influence'].astype('float')
 
 fpl_df = fpl_df[(fpl_df['minutes'] > 0) & (fpl_df['total_points'] > 0)].copy()
 
+# Game week dataframe
+# Map names to df
+name_dict = dict(zip(elements_df['id'], elements_df['first_name'] + " " + elements_df['second_name']))
+player_gw_df['name'] = player_gw_df['id'].map(name_dict)
+player_gw_df['cumulative_points'] = player_gw_df.groupby('name', as_index=False)['total_points'].cumsum()
 
 # ---- BODY ----
 
@@ -47,20 +58,10 @@ assign_background()
 
 st.markdown("## ⚽ Fantasy Premier League Dashboard")
 
-fig = px.scatter(fpl_df,
-                 x='cost', y='total_points',
-                 size='total_points',
-                 color='position',
-                 labels={'cost': 'Costs', 'total_points': 'Total Points'},
-                 custom_data=['name'])
-
-fig.update_traces(hovertemplate='<b>%{customdata[0]}</b> <br>'
-                                'Total Points: %{y} <br>'
-                                'Costs: %{x} m'
-                                '<extra></extra>')
+costs_points_scatter_fig = build_player_cost_points_chart(fpl_df)
 
 st.markdown("### Cost vs. Total Points")
-st.plotly_chart(fig)
+st.plotly_chart(costs_points_scatter_fig)
 st.markdown("---")
 
 
@@ -127,8 +128,26 @@ heatmap_fig = build_heatmap(fpl_df)
 st.write(heatmap_fig)
 st.markdown("---")
 
+# Player GW points development
+st.markdown("### Player Points Development")
+player_gw_df = player_gw_df[player_gw_df['minutes'] > 0]
+player_list = player_gw_df['name'].unique().tolist()
+player_list.sort()
+top_10_players_default = player_gw_df.sort_values('cumulative_points', ascending=False)['name'].head(10).to_list()
+player_choices = st.multiselect('Select Players',
+                                player_list,
+                                default=top_10_players_default)
+
+selected_players_df = player_gw_df[player_gw_df['name'].isin(player_choices)]
+
+points_dev_fig = build_points_dev_plot(selected_players_df)
+
+st.plotly_chart(points_dev_fig)
+st.markdown("---")
+
+
 # Dataframe
-st.markdown("### Data")
+st.markdown("### Player Data")
 display_df = fpl_df[['name', 'team', 'position', 'total_points', 'form', 'cost', 'value',
                      'creativity', 'threat', 'influence',
                      'selected_by_percent', 'now_cost', 'minutes', 'transfers_in',
@@ -137,3 +156,5 @@ display_df = fpl_df[['name', 'team', 'position', 'total_points', 'form', 'cost',
                      'starts_per_90']]
 st.dataframe(display_df)
 
+st.markdown("### GW Data")
+st.dataframe(player_gw_df)
